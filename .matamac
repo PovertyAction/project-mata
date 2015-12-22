@@ -1,0 +1,15 @@
+[cons]
+	True = 1
+	False = 0
+
+[type]
+	C = complex
+	N = numeric
+	R = real
+	S = string
+	T = transmorphic
+
+	Boolean = real
+	FileHandle = real
+	LclName = string
+	Name = string
