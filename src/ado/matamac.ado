@@ -357,17 +357,20 @@ void EnumSetting::add_all()
 class MataMacFile {
 	public:
 		`SM' parse()
-		void new()
+		void init()
 
 	private:
-		`SS' section
+		`SS' filename, section
 		`SM' locals
 		class Setting scalar setting()
 		void parse_line(), _trim(), split_line()
 }
 
-void MataMacFile::new()
+void MataMacFile::init(`SS' filename)
+{
+	this.filename = filename
 	locals = J(0, 2, "")
+}
 
 void MataMacFile::_trim(`SS' s)
 {
@@ -445,7 +448,7 @@ void MataMacFile::parse_line(`SS' line)
 	`RS' fh
 	`SM' line
 
-	fh = fopen(pathjoin(st_global("MATAMAC_ROOT_PATH"), ".matamac"), "r")
+	fh = fopen(filename, "r")
 	while ((line = fget(fh)) != J(0, 0, ""))
 		parse_line(line)
 	fclose(fh)
@@ -458,33 +461,31 @@ void MataMacFile::parse_line(`SS' line)
 
 
 /* -------------------------------------------------------------------------- */
-					/* main */
+					/* MataMac */
 
-void set_root_path()
-{
-	`SS' name, dir, curdir
+class MataMac {
+	public:
+		void define()
 
-	name = "MATAMAC_ROOT_PATH"
-	dir = st_global(name)
-	// Run -stgit- only if necessary.
-	if (dir == "" || substr(pwd(), 1, strlen(dir)) != dir) {
-		stata("qui stgit")
-		curdir = pwd()
-		chdir(st_global("r(git_dir)"))
-		chdir("..")
-		st_global(name, pwd())
-		chdir(curdir)
-	}
+	private:
+		`SS' project_root()
+		void define_locals(), define_global()
 }
 
-void define_locals(`SM' locals)
+`SS' MataMac::project_root()
+{
+	stata("_find_project_root")
+	return(st_global("r(path)"))
+}
+
+void MataMac::define_locals(`SM' locals)
 {
 	`RS' i
 	for (i = 1; i <= rows(locals); i++)
 		stata(sprintf(`"c_local %s `"%s"'"', locals[i, 1], locals[i, 2]))
 }
 
-void define_global(`SM' locals)
+void MataMac::define_global(`SM' locals)
 {
 	`SS' name
 	name = "_matamac_locals"
@@ -493,11 +494,12 @@ void define_global(`SM' locals)
 	st_global("r(mata)", name)
 }
 
-void parse_config()
+void MataMac::define()
 {
 	`SM' locals
 	class MataMacFile scalar config
 
+	config.init(pathjoin(project_root(), ".matamac"))
 	locals = config.parse()
 	define_locals(locals)
 	define_global(locals)
@@ -505,11 +507,11 @@ void parse_config()
 
 void matamac()
 {
-	set_root_path()
-	parse_config()
+	class MataMac scalar matamac
+	matamac.define()
 }
 
-					/* main */
+					/* MataMac */
 /* -------------------------------------------------------------------------- */
 
 end
