@@ -12,6 +12,18 @@ matamac
 
 mata:
 
+`SS' project_root()
+{
+	stata("_find_project_root")
+	return(st_global("r(path)"))
+}
+
+`SR' external_projects()
+{
+	stata("_external_projects")
+	return(tokens(st_global("r(roots)")))
+}
+
 // Searches a directory and its subdirectories for a file, returning the file's
 // parent directory. The filename must be lowercase.
 `SS' find_parent_dir(`SS' basename, `SS' dir)
@@ -35,11 +47,16 @@ mata:
 
 void find_source(`LclNameS' _source)
 {
-	`SS' basename, dir
+	`RS' i
+	`SS' dir, basename, lower
+	`SR' roots
 
 	basename = st_local(_source) + ".mata"
-	dir = find_parent_dir(strlower(basename),
-		pathjoin(st_global("MATAMAC_ROOT_PATH"), "src"))
+	lower = strlower(basename)
+	roots = project_root(), external_projects()
+	pragma unset dir
+	for (i = 1; dir == "" && i <= length(roots); i++)
+		dir = find_parent_dir(lower, pathjoin(roots[i], "src"))
 	if (dir == "") {
 		errprintf("file %s not found\n", basename)
 		exit(601)
