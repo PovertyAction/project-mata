@@ -469,13 +469,55 @@ class MataMac {
 
 	private:
 		`SS' project_root()
-		void define_locals(), define_global()
+		`SR' external_projects()
+		`SM' parse_files()
+		void _validate_locals(), define_locals(), define_global()
 }
 
 `SS' MataMac::project_root()
 {
 	stata("_find_project_root")
 	return(st_global("r(path)"))
+}
+
+`SR' MataMac::external_projects()
+{
+	stata("_external_projects")
+	return(tokens(st_global("r(roots)")))
+}
+
+void MataMac::_validate_locals(`SM' locals)
+{
+	`RS' i
+	locals = uniqrows(locals)
+	for (i = 2; i <= rows(locals); i++) {
+		if (locals[i, 1] == locals[i - 1, 1]) {
+			errprintf("multiple conflicting definitions of local %s:\n",
+				locals[i, 1])
+			printf("{res}%s\n%s\n", locals[i - 1, 2], locals[i, 2])
+			exit(198)
+		}
+	}
+}
+
+`SM' MataMac::parse_files()
+{
+	`RS' i
+	`SR' roots
+	`SM' locals
+	class MataMacFile scalar config
+
+	locals = J(0, 2, "")
+	roots = project_root(), external_projects()
+	for (i = 1; i <= length(roots); i++) {
+		config = MataMacFile()
+		config.init(pathjoin(roots[i], ".matamac"))
+		locals = locals \ config.parse()
+	}
+
+	_validate_locals(locals)
+
+	return(locals)
 }
 
 void MataMac::define_locals(`SM' locals)
@@ -497,10 +539,7 @@ void MataMac::define_global(`SM' locals)
 void MataMac::define()
 {
 	`SM' locals
-	class MataMacFile scalar config
-
-	config.init(pathjoin(project_root(), ".matamac"))
-	locals = config.parse()
+	locals = parse_files()
 	define_locals(locals)
 	define_global(locals)
 }
