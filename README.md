@@ -12,10 +12,12 @@ Table of Contents
 
 - Dependency management
   - Declaration dependencies
+  - External dependencies
 - Macro definitions
   - Type macros
   - Constants
   - Enumerations
+  - External dependencies
 - File structure
 - Assembling an ado-file
 - Installation
@@ -148,6 +150,22 @@ class Member {
 
 end
 ```
+
+### External dependencies
+
+One Project Mata project may depend on the code of another. For example, `set.mata` and `graph.mata` may belong to one Project Mata project while `algorithm.mata` belongs to another.
+
+Say `set` and `graph` are part of project Foundation, and `algorithm` is part of project Levenshtein. You need to specify that Levenshtein depends on Foundation so that `matainclude` and `declareclass` know to search the `src` directory of Foundation for source files.
+
+To do so, add a file named `.external` to the root of the dependent project (Levenshtein). Add a line to the file for each dependency, specifying the dependency's root path. Don't list the absolute path of the dependency's project root: Project Mata projects should work across computers. Rather, list the `fastcd` code that maps to the project root. (For more on `fastcd`, see the SSC package of the same name.) For example:
+
+`.external`
+
+```
+foundation
+```
+
+Here, Project Mata assumes that `c foundation` points to the root of project Foundation.
 
 Macro definitions
 -----------------
@@ -321,14 +339,16 @@ This enumeration's definition in `.matamac` appears as follows:
 
 `WriteResult` designates a name for the enumeration's type macros, while `(Result)` prefixes the names of the enumeration's value macros.
 
+### External dependencies
+
+`matamac` defines the macros specified in the project's `.matamac` file, as well as the `.matamac` files of the project's external dependencies. To automatically add the core Project Mata macros, add Project Mata as a dependency.
+
 File structure
 --------------
 
 Project Mata requires your project to follow a defined structure.
 
-You must store your files in a Git repository. Project Mata uses the user-written program `stgit` to identify the root of the repository.
-
-At the repository root, define `.matamac` for project macros. Every Mata source file must run `matamac`.
+At the project's root directory, define `.matamac` for project macros. In fact, the project root is defined as the directory that contains `.matamac`.
 
 Store your source files, both Stata and Mata, in directory `src`. Project Mata ado-files do not use other directories, but we recommend that you create a directory named `doc` for project documentation. For example, `doc/help` could contain Stata help files while `doc/develop` stores documentation for project developers.
 
@@ -382,4 +402,4 @@ Installation
 
 To use Project Mata, clone this repository and add `src/ado` to your ado-path.
 
-Project Mata requires the user-written program `stgit` to manage Git repositories.
+Project Mata requires the SSC package `fastcd` to manage external dependencies.
