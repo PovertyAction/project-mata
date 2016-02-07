@@ -357,17 +357,20 @@ void EnumSetting::add_all()
 class MataMacFile {
 	public:
 		`SM' parse()
-		void new()
+		void init()
 
 	private:
-		`SS' section
+		`SS' filename, section
 		`SM' locals
 		class Setting scalar setting()
 		void parse_line(), _trim(), split_line()
 }
 
-void MataMacFile::new()
+void MataMacFile::init(`SS' filename)
+{
+	this.filename = filename
 	locals = J(0, 2, "")
+}
 
 void MataMacFile::_trim(`SS' s)
 {
@@ -445,7 +448,7 @@ void MataMacFile::parse_line(`SS' line)
 	`RS' fh
 	`SM' line
 
-	fh = fopen(pathjoin(st_global("MATAMAC_ROOT_PATH"), ".matamac"), "r")
+	fh = fopen(filename, "r")
 	while ((line = fget(fh)) != J(0, 0, ""))
 		parse_line(line)
 	fclose(fh)
@@ -458,33 +461,73 @@ void MataMacFile::parse_line(`SS' line)
 
 
 /* -------------------------------------------------------------------------- */
-					/* main */
+					/* MataMac */
 
-void set_root_path()
+class MataMac {
+	public:
+		void define()
+
+	private:
+		`SS' project_root()
+		`SR' external_projects()
+		`SM' parse_files()
+		void _validate_locals(), define_locals(), define_global()
+}
+
+`SS' MataMac::project_root()
 {
-	`SS' name, dir, curdir
+	stata("_find_project_root")
+	return(st_global("r(path)"))
+}
 
-	name = "MATAMAC_ROOT_PATH"
-	dir = st_global(name)
-	// Run -stgit- only if necessary.
-	if (dir == "" || substr(pwd(), 1, strlen(dir)) != dir) {
-		stata("qui stgit")
-		curdir = pwd()
-		chdir(st_global("r(git_dir)"))
-		chdir("..")
-		st_global(name, pwd())
-		chdir(curdir)
+`SR' MataMac::external_projects()
+{
+	stata("_external_projects")
+	return(tokens(st_global("r(roots)")))
+}
+
+void MataMac::_validate_locals(`SM' locals)
+{
+	`RS' i
+	locals = uniqrows(locals)
+	for (i = 2; i <= rows(locals); i++) {
+		if (locals[i, 1] == locals[i - 1, 1]) {
+			errprintf("multiple conflicting definitions of local %s:\n",
+				locals[i, 1])
+			printf("{res}%s\n%s\n", locals[i - 1, 2], locals[i, 2])
+			exit(198)
+		}
 	}
 }
 
-void define_locals(`SM' locals)
+`SM' MataMac::parse_files()
+{
+	`RS' i
+	`SR' roots
+	`SM' locals
+	class MataMacFile scalar config
+
+	locals = J(0, 2, "")
+	roots = project_root(), external_projects()
+	for (i = 1; i <= length(roots); i++) {
+		config = MataMacFile()
+		config.init(pathjoin(roots[i], ".matamac"))
+		locals = locals \ config.parse()
+	}
+
+	_validate_locals(locals)
+
+	return(locals)
+}
+
+void MataMac::define_locals(`SM' locals)
 {
 	`RS' i
 	for (i = 1; i <= rows(locals); i++)
 		stata(sprintf(`"c_local %s `"%s"'"', locals[i, 1], locals[i, 2]))
 }
 
-void define_global(`SM' locals)
+void MataMac::define_global(`SM' locals)
 {
 	`SS' name
 	name = "_matamac_locals"
@@ -493,23 +536,21 @@ void define_global(`SM' locals)
 	st_global("r(mata)", name)
 }
 
-void parse_config()
+void MataMac::define()
 {
 	`SM' locals
-	class MataMacFile scalar config
-
-	locals = config.parse()
+	locals = parse_files()
 	define_locals(locals)
 	define_global(locals)
 }
 
 void matamac()
 {
-	set_root_path()
-	parse_config()
+	class MataMac scalar matamac
+	matamac.define()
 }
 
-					/* main */
+					/* MataMac */
 /* -------------------------------------------------------------------------- */
 
 end

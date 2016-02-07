@@ -94,7 +94,7 @@ class AdoWriter {
 		pointer(class AdoComponents scalar) scalar components
 
 		// Project Mata helpers
-		`SS' find_source()
+		`SS' project_root(), find_source()
 		pointer(class SplitClass scalar) scalar split_class()
 		void split_class_declarations()
 
@@ -116,6 +116,12 @@ void AdoWriter::init(class AdoComponents scalar components, `SS' ado_file)
 {
 	this.components = &components
 	this.ado_file = ado_file
+}
+
+`SS' AdoWriter::project_root()
+{
+	stata("_find_project_root")
+	return(st_global("r(path)"))
 }
 
 `SS' AdoWriter::find_source(`NameS' source)
@@ -156,8 +162,7 @@ void AdoWriter::append(`SS' filename)
 void AdoWriter::write_stata()
 {
 	`SS' filename
-	filename = sprintf("%s/src/%s",
-		st_global("MATAMAC_ROOT_PATH"), components->stata())
+	filename = sprintf("%s/src/%s", project_root(), components->stata())
 	append(filename)
 }
 
