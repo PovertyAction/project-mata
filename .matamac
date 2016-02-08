@@ -13,3 +13,6 @@
 	FileHandle = real
 	LclName = string
 	Name = string
+
+	AsArray = transmorphic matrix
+	Tokenizer = transmorphic matrix
